@@ -21,9 +21,13 @@ SOFTWARE.
 ]]--
 
 require("love.audio")
+require("love.filesystem")
+require("love.sound")
 
 local function load(path, params)
-  return love.audio.newSource(path, params.type)
+  local info = love.filesystem.getInfo(path, "file")
+  local sourceType = params.type or ((info and info.size and info.size < 5e5) and 'static') or 'stream'
+  return love.audio.newSource(path, sourceType)
 end
 
 return {
