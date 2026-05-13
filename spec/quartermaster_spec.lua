@@ -79,12 +79,15 @@ _G.love.timer = {
   sleep = function () end,
 }
 
-local function runFakeWorker()
+local function runFakeWorker(...)
+  local responses = { ... }
+  local resIdx = 1
+
   while intakeChannel:peek() do
     local request = intakeChannel:pop()
-    outputChannel:push({
+    outputChannel:push((type(responses) == "table" and responses[resIdx]) or {
       asset = "dummy",
-      dependencies = { path = "other-dummy.txt", params = { p2 = "param2" } },
+      dependencies = {},
       path = request.path,
       params = request.params,
     })
@@ -288,6 +291,80 @@ describe("Quartermaster", function ()
 
       assert.Nil(quartermaster:get(descriptor))
     end)
+
+    it("unloads dependencies when keepDependencies is falsey", function ()
+      local descriptor = {
+        path = "dummy.txt",
+        params = { p = "v" },
+      }
+
+      local dependency = {
+        path = "other-dummy.txt",
+        params = { p2 = "v2" },
+      }
+
+      quartermaster:load(descriptor)
+      runFakeWorker({
+        asset = "dummy",
+        path = descriptor.path,
+        params = descriptor.params,
+        dependencies = { dependency }
+      })
+      quartermaster:sync()
+
+      runFakeWorker({
+        asset = "dummy",
+        path = dependency.path,
+        params = dependency.params,
+        dependencies = {}
+      })
+      quartermaster:blockUntilLoaded()
+
+      assert.Not.Nil(quartermaster:get(descriptor))
+      assert.Not.Nil(quartermaster:get(dependency))
+
+      quartermaster:unload(descriptor)
+
+      assert.Nil(quartermaster:get(descriptor))
+      assert.Nil(quartermaster:get(dependency))
+    end)
+
+    it("does not unload dependencies when keepDependencies is truthy", function ()
+      local descriptor = {
+        path = "dummy.txt",
+        params = { p = "v" },
+      }
+
+      local dependency = {
+        path = "other-dummy.txt",
+        params = { p2 = "v2" },
+      }
+
+      quartermaster:load(descriptor)
+      runFakeWorker({
+        asset = "dummy",
+        path = descriptor.path,
+        params = descriptor.params,
+        dependencies = { dependency }
+      })
+      quartermaster:sync()
+
+      runFakeWorker({
+        asset = "dummy",
+        path = dependency.path,
+        params = dependency.params,
+        dependencies = {}
+      })
+      quartermaster:blockUntilLoaded()
+
+      assert.Not.Nil(quartermaster:get(descriptor))
+      assert.Not.Nil(quartermaster:get(dependency))
+
+      quartermaster:unload(descriptor, true)
+
+      assert.Nil(quartermaster:get(descriptor))
+      assert.Not.Nil(quartermaster:get(dependency))
+    end)
   end)
 
   describe(":unloadList", function ()
@@ -389,6 +466,79 @@ describe("Quartermaster", function ()
         "dummy",
         quartermaster:get(descriptor)
       )
+    end)
+
+    it("calls 'load' for each dependency returned by the worker", function ()
+      local descriptor = {
+        path = "dummy.txt",
+        params = { p = "v" },
+      }
+      quartermaster:load(descriptor)
+
+      local dependency = {
+        path = "other-dummy.txt",
+        params = { p2 = "v2" },
+      }
+      runFakeWorker({
+        asset = "dummy",
+        path = descriptor.path,
+        params = descriptor.params,
+        dependencies = { dependency }
+      })
+
+      spy.on(quartermaster, "load")
+      quartermaster:sync()
+
+      assert.spy(quartermaster.load).was.called_with(match._, dependency.path, dependency.params)
+    end)
+
+    it("processes an asset only when its dependencies have been fully loaded", function ()
+      local descriptor = {
+        path = "dummy.txt",
+        params = { p = "v" },
+      }
+      quartermaster:load(descriptor)
+
+      local dependency1 = {
+        path = "other-dummy.txt",
+        params = { p2 = "v2" },
+      }
+      runFakeWorker({
+        asset = "dummy",
+        path = descriptor.path,
+        params = descriptor.params,
+        dependencies = { dependency1 },
+      })
+
+      quartermaster:sync()
+      assert.Nil(quartermaster:get(descriptor))
+
+      local dependency2 = {
+        path = "another-dummy.txt",
+        params = { p3 = "v3" },
+      }
+      runFakeWorker({
+        asset = "dummy",
+        path = dependency1.path,
+        params = dependency1.params,
+        dependencies = { dependency2 },
+      })
+
+      quartermaster:sync()
+      assert.Nil(quartermaster:get(descriptor))
+
+      runFakeWorker({
+        asset = "dummy",
+        path = dependency2.path,
+        params = dependency2.params,
+        dependencies = {},
+      })
+
+      quartermaster:sync()
+      assert.Nil(quartermaster:get(descriptor))
+
+      quartermaster:sync()
+      assert.are.equal(quartermaster:get(descriptor), "dummy")
     end)
   end)
 
