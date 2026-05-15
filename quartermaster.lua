@@ -147,8 +147,16 @@ local Quartermaster = class {
 
   unload = function (self, descriptor, keepDependencies)
     if not keepDependencies then
-      self:unloadList(self.dependencyCache[hashAssetDescriptor(descriptor)], keepDependencies)
+      local assetKey = self.dependencyCache[hashAssetDescriptor(descriptor)]
+      local dependencies = {}
+
+      for _, dependency in pairs(assetKey) do
+        table.insert(dependencies, dependency)
+      end
+
+      self:unloadList(dependencies, keepDependencies)
     end
+
     self.cache[hashAssetDescriptor(descriptor)] = nil
   end,
 
@@ -192,39 +200,44 @@ local Quartermaster = class {
       self.pending[assetKey] = response
 
       if response.dependencies then
-        for _, dependency in ipairs(response.dependencies) do
+        for _, dependency in pairs(response.dependencies) do
           self:load(dependency.path, dependency.params)
         end
       end
     end
 
-    for assetKey, response in pairs(self.pending) do
-      local loader = self:getLoader(response.path)
-      local fullyLoaded = true
+    local fullyLoaded
 
-      for _, descriptor in pairs(response.dependencies) do
-        local dependencyAssetKey = hashAssetDescriptor(descriptor)
-        if not self.cache[dependencyAssetKey] then
+    repeat
+      fullyLoaded = true
+
+      for assetKey, response in pairs(self.pending) do
+        local loader = self:getLoader(response.path)
+        local assetLoaded = true
+
+        for _, descriptor in pairs(response.dependencies) do
+          local dependencyAssetKey = hashAssetDescriptor(descriptor)
+          if not self.cache[dependencyAssetKey] then
+            assetLoaded = false
+            break
+          end
+        end
+
+        if assetLoaded then
+          self.inProgressCount = self.inProgressCount - 1
+          self.dependencyCache[assetKey] = response.dependencies
+          self.cache[assetKey] = loader.process(response.asset, self:getMappedDependencies(assetKey))
+          self.pending[assetKey] = nil
           fullyLoaded = false
-          break
+        end
+
+        if limit then
+          if limit > 0 then
+            limit = limit - 1
+          end
         end
       end
-
-      if fullyLoaded then
-        self.inProgressCount = self.inProgressCount - 1
-        self.dependencyCache[assetKey] = response.dependencies
-        self.cache[assetKey] = loader.process(response.asset, self:getMappedDependencies(assetKey))
-        self.pending[assetKey] = nil
-      end
-
-      if limit then
-        if limit > 0 then
-          limit = limit - 1
-        else
-          break
-        end
-      end
-    end
+    until fullyLoaded == true or limit == 0
   end,
 
   getMappedDependencies = function (self, descriptor)

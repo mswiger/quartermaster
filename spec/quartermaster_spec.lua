@@ -308,7 +308,7 @@ describe("Quartermaster", function ()
         asset = "dummy",
         path = descriptor.path,
         params = descriptor.params,
-        dependencies = { dependency }
+        dependencies = { dep1 = dependency }
       })
       quartermaster:sync()
 
@@ -345,7 +345,7 @@ describe("Quartermaster", function ()
         asset = "dummy",
         path = descriptor.path,
         params = descriptor.params,
-        dependencies = { dependency }
+        dependencies = { dep1 = dependency }
       })
       quartermaster:sync()
 
@@ -497,17 +497,18 @@ describe("Quartermaster", function ()
         path = "dummy.txt",
         params = { p = "v" },
       }
-      quartermaster:load(descriptor)
 
       local dependency1 = {
         path = "other-dummy.txt",
         params = { p2 = "v2" },
       }
+
+      quartermaster:load(descriptor)
       runFakeWorker({
         asset = "dummy",
         path = descriptor.path,
         params = descriptor.params,
-        dependencies = { dependency1 },
+        dependencies = { dep1 = dependency1 },
       })
 
       quartermaster:sync()
@@ -517,11 +518,12 @@ describe("Quartermaster", function ()
         path = "another-dummy.txt",
         params = { p3 = "v3" },
       }
+
       runFakeWorker({
         asset = "dummy",
         path = dependency1.path,
         params = dependency1.params,
-        dependencies = { dependency2 },
+        dependencies = { dep2 = dependency2 },
       })
 
       quartermaster:sync()
@@ -535,10 +537,7 @@ describe("Quartermaster", function ()
       })
 
       quartermaster:sync()
-      assert.Nil(quartermaster:get(descriptor))
-
-      quartermaster:sync()
-      assert.are.equal(quartermaster:get(descriptor), "dummy")
+      assert.are.equal("dummy", quartermaster:get(descriptor))
     end)
   end)
 
