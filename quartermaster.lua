@@ -201,7 +201,8 @@ local Quartermaster = class {
 
       if response.dependencies then
         for _, dependency in pairs(response.dependencies) do
-          self:load(dependency.path, dependency.params)
+          local path, params = unpackAssetDescriptor(dependency)
+          self:load(path, params)
         end
       end
     end
@@ -231,10 +232,8 @@ local Quartermaster = class {
           fullyLoaded = false
         end
 
-        if limit then
-          if limit > 0 then
-            limit = limit - 1
-          end
+        if limit and limit > 0 then
+          limit = limit - 1
         end
       end
     until fullyLoaded == true or limit == 0

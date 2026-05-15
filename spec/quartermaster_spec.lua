@@ -514,10 +514,7 @@ describe("Quartermaster", function ()
       quartermaster:sync()
       assert.Nil(quartermaster:get(descriptor))
 
-      local dependency2 = {
-        path = "another-dummy.txt",
-        params = { p3 = "v3" },
-      }
+      local dependency2 = "another-dummy.txt"
 
       runFakeWorker({
         asset = "dummy",
@@ -531,8 +528,8 @@ describe("Quartermaster", function ()
 
       runFakeWorker({
         asset = "dummy",
-        path = dependency2.path,
-        params = dependency2.params,
+        path = dependency2,
+        params = {},
         dependencies = {},
       })
 
