@@ -489,7 +489,7 @@ describe("Quartermaster", function ()
       spy.on(quartermaster, "load")
       quartermaster:sync()
 
-      assert.spy(quartermaster.load).was.called_with(match._, dependency.path, dependency.params)
+      assert.spy(quartermaster.load).was.called_with(match._, dependency)
     end)
 
     it("processes an asset only when its dependencies have been fully loaded", function ()

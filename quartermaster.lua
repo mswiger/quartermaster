@@ -64,8 +64,8 @@ local Quartermaster = class {
     self.cache = {}
     self.dependencyCache = {}
     self.loaders = {}
-    self.pending = {}
-    self.inProgressCount = 0
+    self.loading = {}
+    self.loadingDependencies = {}
 
     self.intakeChannel = love.thread.getChannel("quartermaster.intake")
     self.outputChannel = love.thread.getChannel("quartermaster.output")
@@ -103,6 +103,10 @@ local Quartermaster = class {
     end
 
     local assetKey = hashAssetDescriptor(descriptor)
+    if not assetKey then
+      return nil, "Invalid asset key"
+    end
+
     if self.cache[assetKey] then
       return self.assetKey
     end
@@ -113,7 +117,7 @@ local Quartermaster = class {
       loaderModule = loader.loaderModule,
     }
 
-    self.inProgressCount = self.inProgressCount + 1
+    self.loading[assetKey] = true
     self.intakeChannel:push(request)
 
     return request
@@ -197,12 +201,11 @@ local Quartermaster = class {
         return nil, "Invalid response from worker"
       end
 
-      self.pending[assetKey] = response
+      self.loadingDependencies[assetKey] = response
 
       if response.dependencies then
         for _, dependency in pairs(response.dependencies) do
-          local path, params = unpackAssetDescriptor(dependency)
-          self:load(path, params)
+          self:load(dependency)
         end
       end
     end
@@ -212,7 +215,7 @@ local Quartermaster = class {
     repeat
       fullyLoaded = true
 
-      for assetKey, response in pairs(self.pending) do
+      for assetKey, response in pairs(self.loadingDependencies) do
         local loader = self:getLoader(response.path)
         local assetLoaded = true
 
@@ -225,10 +228,10 @@ local Quartermaster = class {
         end
 
         if assetLoaded then
-          self.inProgressCount = self.inProgressCount - 1
           self.dependencyCache[assetKey] = response.dependencies
           self.cache[assetKey] = loader.process(response.asset, self:getMappedDependencies(assetKey))
-          self.pending[assetKey] = nil
+          self.loading[assetKey] = nil
+          self.loadingDependencies[assetKey] = nil
           fullyLoaded = false
         end
 
@@ -251,17 +254,19 @@ local Quartermaster = class {
   end,
 
   blockUntilLoaded = function (self)
-    while self.inProgressCount > 0 do
+    while self:getInProgressCount() > 0 do
       self:sync()
       love.timer.sleep(0.001)
     end
   end,
 
-  shutdown = function(self)
+  shutdown = function (self)
     self:deregisterAllLoaders()
     self:unloadAll()
 
-    self.inProgressCount = 0
+    self.loading = {}
+    self.loadingDependencies = {}
+
     self.intakeChannel:clear()
     self.outputChannel:clear()
 
@@ -281,6 +286,14 @@ local Quartermaster = class {
     until loader ~= nil or extension == nil
 
     return loader
+  end,
+
+  getInProgressCount = function (self)
+    local inProgressCount = 0
+    for _, _ in pairs(self.loading) do
+      inProgressCount = inProgressCount + 1
+    end
+    return inProgressCount
   end,
 }
 
