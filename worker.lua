@@ -24,6 +24,14 @@ SOFTWARE.
 local intakeChannel, outputChannel = ...
 local loaders = {}
 
+local function callAndCatch(f)
+  local success, err = pcall(f)
+
+  if not success then
+    print(err)
+  end
+end
+
 while true do
   local request = intakeChannel:demand()
 
@@ -36,10 +44,15 @@ while true do
   local params = request.params or {}
 
   if not loaders[loaderModule] then
-    loaders[loaderModule] = require(loaderModule)
+    callAndCatch(function()
+      loaders[loaderModule] = require(loaderModule)
+    end)
   end
 
-  local asset, dependencies = loaders[loaderModule].load(path, params)
+  local asset, dependencies
+  callAndCatch(function()
+    asset, dependencies = loaders[loaderModule].load(path, params)
+  end)
 
   outputChannel:push({
     asset = asset,
