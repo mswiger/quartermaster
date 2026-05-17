@@ -34,7 +34,10 @@ end
 
 local function unpackAssetDescriptor(descriptor)
   local path, params
-  if type(descriptor) == "table" then
+
+  if type(descriptor) == "function" then
+    return unpackAssetDescriptor(descriptor())
+  elseif type(descriptor) == "table" then
     path = descriptor.path
     params = descriptor.params
   elseif type(descriptor) == "string" then
