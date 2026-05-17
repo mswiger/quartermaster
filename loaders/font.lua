@@ -28,7 +28,7 @@ local function load(path)
 end
 
 local function process(data, params)
-  love.graphics.newFont(data, params.size, params.hinting, params.dpiscale)
+  return love.graphics.newFont(data, params.size, params.hinting, params.dpiscale)
 end
 
 return {
