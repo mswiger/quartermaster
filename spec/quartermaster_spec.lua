@@ -75,9 +75,6 @@ _G.love.thread = {
     }
   end,
 }
-_G.love.timer = {
-  sleep = function () end,
-}
 
 local function runFakeWorker(...)
   local responses = { ... }
@@ -120,7 +117,7 @@ describe("Quartermaster", function ()
       quartermaster:load(descriptor)
 
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.are.equal(
         "dummy",
@@ -174,7 +171,7 @@ describe("Quartermaster", function ()
     it("does not add the asset to the intake channel if it is already loaded", function ()
       quartermaster:load("dummy.txt", { p = "v" })
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       quartermaster:load("dummy.txt", { p = "v" })
       assert.are.equal(nil, intakeChannel:peek())
@@ -266,7 +263,7 @@ describe("Quartermaster", function ()
     it("unloads the given asset path if it is loaded", function ()
       quartermaster:load("dummy.txt")
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.Not.Nil(quartermaster:get("dummy.txt"))
 
@@ -283,7 +280,7 @@ describe("Quartermaster", function ()
 
       quartermaster:load(descriptor)
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.Not.Nil(quartermaster:get(descriptor))
 
@@ -318,7 +315,7 @@ describe("Quartermaster", function ()
         params = dependency.params,
         dependencies = {}
       })
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.Not.Nil(quartermaster:get(descriptor))
       assert.Not.Nil(quartermaster:get(dependency))
@@ -355,7 +352,7 @@ describe("Quartermaster", function ()
         params = dependency.params,
         dependencies = {}
       })
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.Not.Nil(quartermaster:get(descriptor))
       assert.Not.Nil(quartermaster:get(dependency))
@@ -377,7 +374,7 @@ describe("Quartermaster", function ()
 
       quartermaster:loadList({ descriptor1, descriptor2 })
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.Not.Nil(quartermaster:get(descriptor1))
       assert.Not.Nil(quartermaster:get(descriptor2))
@@ -399,7 +396,7 @@ describe("Quartermaster", function ()
 
       quartermaster:loadList({ descriptor1, descriptor2 })
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.Not.Nil(quartermaster:get(descriptor1))
       assert.Not.Nil(quartermaster:get(descriptor2))
@@ -538,23 +535,6 @@ describe("Quartermaster", function ()
     end)
   end)
 
-  describe(":blockUntilLoaded", function ()
-    it("blocks until all resources have been loaded", function ()
-    local descriptor1 = "dummy1.txt"
-      local descriptor2 = {
-        path = "dummy2.txt",
-        params = { p = "v" },
-      }
-      quartermaster:loadList({ descriptor1, descriptor2 })
-
-      runFakeWorker()
-      quartermaster:blockUntilLoaded()
-
-      assert.are.equal("dummy", quartermaster:get(descriptor1))
-      assert.are.equal("dummy", quartermaster:get(descriptor2))
-    end)
-  end)
-
   describe(":shutdown", function ()
     it("clears the loaded assets and unregisters all loaders", function ()
       local descriptor1 = {
@@ -568,7 +548,7 @@ describe("Quartermaster", function ()
 
       quartermaster:loadList({ descriptor1, descriptor2 })
       runFakeWorker()
-      quartermaster:blockUntilLoaded()
+      repeat until quartermaster:sync()
 
       assert.are.equal("dummy", quartermaster:get(descriptor1))
       assert.are.equal("dummy", quartermaster:get(descriptor2))

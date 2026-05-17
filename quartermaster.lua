@@ -240,6 +240,8 @@ local Quartermaster = class {
         end
       end
     until fullyLoaded == true or limit == 0
+
+    return self:getInProgressCount() == 0
   end,
 
   getMappedDependencies = function (self, descriptor)
@@ -251,13 +253,6 @@ local Quartermaster = class {
     end
 
     return mappedDependencies
-  end,
-
-  blockUntilLoaded = function (self)
-    while self:getInProgressCount() > 0 do
-      self:sync()
-      love.timer.sleep(0.001)
-    end
   end,
 
   shutdown = function (self)
