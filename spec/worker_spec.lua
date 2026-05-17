@@ -53,7 +53,7 @@ describe("worker", function ()
     runWorker(intakeChannel, outputChannel)
 
     assert.spy(outputChannel.push).called_with(outputChannel, {
-      asset = "dummy",
+      data = "dummy",
       path = "some/path",
       params = { p1 = "param1", p2 = "param2" },
       dependencies = { "other-dummy" },

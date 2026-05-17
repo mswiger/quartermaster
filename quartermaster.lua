@@ -232,7 +232,7 @@ local Quartermaster = class {
 
         if assetLoaded then
           self.dependencyCache[assetKey] = response.dependencies
-          self.cache[assetKey] = loader.process(response.asset, self:getMappedDependencies(assetKey))
+          self.cache[assetKey] = loader.process(response.data, response.params, self:getMappedDependencies(assetKey))
           self.loading[assetKey] = nil
           self.loadingDependencies[assetKey] = nil
           fullyLoaded = false

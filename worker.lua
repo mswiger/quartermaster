@@ -49,13 +49,13 @@ while true do
     end)
   end
 
-  local asset, dependencies
+  local data, dependencies
   callAndCatch(function()
-    asset, dependencies = loaders[loaderModule].load(path, params)
+    data, dependencies = loaders[loaderModule].load(path, params)
   end)
 
   outputChannel:push({
-    asset = asset,
+    data = data,
     path = path,
     params = params,
     dependencies = dependencies or {},
